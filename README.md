@@ -20,7 +20,7 @@
 A trained model is only trustworthy if you can say exactly what produced it: which dataset, which
 configuration, which code, and whether the whole thing reproduces. That is the problem of
 **training provenance**, and it is the backbone of reproducible research, model audits, and
-incident response. This project implements a provenance system **from first principles**:
+incident response. This project implements a provenance system **from scratch**:
 artifacts are **content-addressed** so their identity is their hash, runs are recorded in a
 **lineage DAG** that is itself content-addressed, and the entire pipeline can be **re-executed
 and verified** bit for bit, with byte-level integrity checks that catch tampering. It has **zero
