@@ -1,0 +1,64 @@
+---
+title: System Architecture - Training Provenance
+config:
+  theme: base
+  themeVariables:
+    fontFamily: "Inter, system-ui, sans-serif"
+    primaryColor: "#F8FAFC"
+    primaryBorderColor: "#1E293B"
+    primaryTextColor: "#1E293B"
+    lineColor: "#64748B"
+    clusterBkg: "#EEF2FF"
+    clusterBorder: "#94A3B8"
+---
+flowchart TB
+    classDef edge     fill:#F59E0B,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+    classDef core     fill:#6366F1,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef data     fill:#10B981,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef control  fill:#0EA5E9,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef obs      fill:#CBD5E1,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+
+    Client([Client]):::edge
+
+    subgraph Pipeline["Tracked pipeline (lineage DAG)"]
+        direction LR
+        Dataset[(Dataset)]:::data
+        Config[(Config)]:::data
+        Standardize["standardize"]:::core
+        Train["train_ridge"]:::core
+        Evaluate["evaluate"]:::core
+        Model[(Checkpoint)]:::data
+        Metrics[(Metrics)]:::data
+        Dataset --> Standardize --> Train --> Evaluate --> Metrics
+        Config --> Train
+        Train --> Model
+    end
+
+    subgraph Track["Tracking primitives"]
+        direction TB
+        Hash["Content addressing<br/>sha256 of canonical bytes"]:::core
+        Store[(Content store<br/>deduplicating)]:::data
+        Ledger[(Ledger<br/>content-addressed runs)]:::data
+    end
+
+    subgraph Verify["Reproducibility"]
+        direction TB
+        Reexecute["Re-execute each run"]:::control
+        Integrity["Byte-level integrity check"]:::control
+    end
+
+    subgraph Edge["Service layer (stdlib HTTP, stateless)"]
+        direction TB
+        Router["Router<br/>/health | /ready | /metrics | /report | /verify | /lineage"]:::core
+    end
+
+    Pipeline -.->|artifacts| Store
+    Pipeline -.->|runs| Ledger
+    Hash --> Store
+    Store --> Reexecute
+    Ledger --> Reexecute
+    Store --> Integrity
+    Reexecute --> Result["Reproduced or mismatch"]:::obs
+    Integrity --> Result
+    Client -->|JSON request| Router --> Ledger
+    Router -->|JSON response| Client
