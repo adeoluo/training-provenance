@@ -17,9 +17,34 @@ from typing import Any
 _PREFIX = "sha256:"
 
 
+def _require_canonical(value: Any) -> None:
+    """Reject values that JSON would serialize ambiguously.
+
+    ``json.dumps`` silently coerces non-string dict keys to strings (so ``{1: x}``
+    and ``{"1": x}`` would collide) and tuples to arrays (so ``(1, 2)`` and
+    ``[1, 2]`` would collide). Content addressing must be injective, so those
+    inputs are rejected rather than hashed to a shared identifier. Use string keys
+    and lists.
+    """
+
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError(
+                    f"dict keys must be strings for stable hashing, got {type(key).__name__}"
+                )
+            _require_canonical(item)
+    elif isinstance(value, tuple):
+        raise TypeError("use a list, not a tuple, for stable hashing")
+    elif isinstance(value, list):
+        for item in value:
+            _require_canonical(item)
+
+
 def canonical_bytes(value: Any) -> bytes:
     """Serialize a JSON-compatible value to deterministic, canonical bytes."""
 
+    _require_canonical(value)
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=True, allow_nan=False
     ).encode("utf-8")
