@@ -15,6 +15,21 @@ def test_content_id_is_deterministic_and_order_independent() -> None:
     assert content_id({"a": 1}) != content_id({"a": 2})
 
 
+def test_content_id_rejects_ambiguous_inputs() -> None:
+    import pytest
+
+    # Regression: json.dumps coerced non-string keys and tuples, so these
+    # distinct structures collided onto the same identifier.
+    with pytest.raises(TypeError, match="keys must be strings"):
+        content_id({1: "a"})
+    with pytest.raises(TypeError, match="not a tuple"):
+        content_id((1, 2))
+    with pytest.raises(TypeError, match="not a tuple"):
+        content_id({"x": (1, 2)})
+    with pytest.raises(TypeError, match="not a tuple"):
+        content_id([1, (2, 3)])
+
+
 def test_store_deduplicates_identical_content() -> None:
     store = ContentStore()
     a = store.put({"x": 1}, Kind.CONFIG)
