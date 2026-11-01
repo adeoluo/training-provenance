@@ -13,6 +13,7 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
+from training_provenance.codehash import PIPELINE_OPERATIONS, code_sources
 from training_provenance.provenance import Ledger
 from training_provenance.reproduce import execute
 from training_provenance.store import ContentStore, Kind
@@ -43,12 +44,22 @@ class BuiltPipeline:
     ledger: Ledger
     dataset_id: str
     config_id: str
+    code_id: str
     model_id: str
     metrics_id: str
 
 
-def build_pipeline(*, seed: int = 0, l2: float = 1.0, code_version: str = "1.0.0") -> BuiltPipeline:
-    """Run and track the standardize, train, and evaluate pipeline."""
+def build_pipeline(
+    *, seed: int = 0, l2: float = 1.0, code_version: str | None = None
+) -> BuiltPipeline:
+    """Run and track the standardize, train, and evaluate pipeline.
+
+    The source code of the transforms is fingerprinted and stored as a first-class
+    ``code`` artifact, and that fingerprint is bound to every run as its
+    ``code_version``. The ledger therefore records which dataset, which configuration,
+    and which *code* produced every downstream artifact. Passing ``code_version``
+    overrides the fingerprint (used only to demonstrate code-drift detection).
+    """
 
     store = ContentStore()
     ledger = Ledger()
@@ -57,9 +68,11 @@ def build_pipeline(*, seed: int = 0, l2: float = 1.0, code_version: str = "1.0.0
         make_dataset(seed=seed), Kind.DATASET, {"source": "synthetic", "seed": seed}
     )
     config = store.put({"l2": l2}, Kind.CONFIG, {"model": "ridge"})
+    code = store.put(code_sources(), Kind.CODE, {"operations": list(PIPELINE_OPERATIONS)})
+    version = code_version if code_version is not None else code.id
 
     (standardized_id,) = execute(
-        store, ledger, "standardize", [dataset.id], [Kind.DATASET], code_version=code_version
+        store, ledger, "standardize", [dataset.id], [Kind.DATASET], code_version=version
     )
     (model_id,) = execute(
         store,
@@ -67,7 +80,7 @@ def build_pipeline(*, seed: int = 0, l2: float = 1.0, code_version: str = "1.0.0
         "train_ridge",
         [standardized_id, config.id],
         [Kind.CHECKPOINT],
-        code_version=code_version,
+        code_version=version,
     )
     (metrics_id,) = execute(
         store,
@@ -75,13 +88,14 @@ def build_pipeline(*, seed: int = 0, l2: float = 1.0, code_version: str = "1.0.0
         "evaluate",
         [model_id, standardized_id],
         [Kind.METRICS],
-        code_version=code_version,
+        code_version=version,
     )
     return BuiltPipeline(
         store=store,
         ledger=ledger,
         dataset_id=dataset.id,
         config_id=config.id,
+        code_id=code.id,
         model_id=model_id,
         metrics_id=metrics_id,
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 
+from training_provenance.endtoend import reproduce
 from training_provenance.evaluation import report
 from training_provenance.hashing import short
 from training_provenance.pipeline import build_pipeline
@@ -50,6 +51,43 @@ def _cmd_serve(args: argparse.Namespace) -> None:
     serve(host=args.host, port=args.port)
 
 
+def _cmd_reproduce(args: argparse.Namespace) -> None:
+    report_ = reproduce(seed=args.seed, l2=args.l2)
+    print("End-to-end reproduce (build, then rebuild from scratch):")
+    print(f"  {report_.format()}")
+    for name, ok in sorted(report_.matches.items()):
+        print(f"  {name:<10} {'identical' if ok else 'DRIFTED'}")
+    print(f"  {'code':<10} {'matches source' if report_.code_matches else 'DRIFTED'}")
+
+
+def _cmd_recover(args: argparse.Namespace) -> None:
+    import tempfile
+    from pathlib import Path
+
+    from training_provenance.recovery import (
+        CrashError,
+        inspect_journal,
+        pipeline_plan,
+        resume_plan,
+        run_plan,
+    )
+
+    plan = pipeline_plan(seed=args.seed, l2=args.l2)
+    with tempfile.TemporaryDirectory() as directory:
+        journal = Path(directory) / "run.journal"
+        try:
+            run_plan(plan, journal_path=journal, crash_after=1)
+        except CrashError as crash:
+            print(f"Interrupted: {crash}")
+        status = inspect_journal(journal, plan)
+        print(f"Journal on disk: {status.format()}")
+        resumed = resume_plan(plan, journal)
+        print(f"Resumed to completion: {resumed.completed}/{len(plan.steps)} steps")
+        clean = run_plan(plan)
+        identical = resumed.resolve("metrics") == clean.resolve("metrics")
+        print(f"Resumed metrics identical to uninterrupted run: {identical}")
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="training-provenance", description=__doc__)
     parser.add_argument("--seed", type=int, default=0)
@@ -59,6 +97,8 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("build", help="run the tracked pipeline and print the lineage")
     sub.add_parser("verify", help="verify the pipeline reproduces bit for bit")
     sub.add_parser("tamper", help="corrupt an artifact and show tamper detection")
+    sub.add_parser("reproduce", help="rebuild from scratch and compare every content hash")
+    sub.add_parser("recover", help="interrupt a run, then resume it from its journal")
 
     serve = sub.add_parser("serve", help="start the HTTP service")
     serve.add_argument("--host", default="127.0.0.1")
@@ -68,6 +108,8 @@ def main(argv: list[str] | None = None) -> None:
         "build": _cmd_build,
         "verify": _cmd_verify,
         "tamper": _cmd_tamper,
+        "reproduce": _cmd_reproduce,
+        "recover": _cmd_recover,
         "serve": _cmd_serve,
     }
     args = parser.parse_args(argv)

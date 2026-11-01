@@ -21,6 +21,7 @@ class Kind(StrEnum):
 
     DATASET = "dataset"
     CONFIG = "config"
+    CODE = "code"
     CHECKPOINT = "checkpoint"
     METRICS = "metrics"
 
@@ -83,6 +84,36 @@ class ContentStore:
         if identifier not in self._values:
             raise KeyError(f"unknown artifact {identifier}")
         self._values[identifier] = value
+
+    def ids(self) -> list[str]:
+        """All stored artifact identifiers, in a stable order."""
+
+        return sorted(self._values)
+
+    def snapshot(self) -> dict[str, Any]:
+        """Serialize the store to a JSON-compatible dictionary for durable storage."""
+
+        return {
+            "artifacts": [
+                {
+                    "id": artifact.id,
+                    "kind": artifact.kind.value,
+                    "size_bytes": artifact.size_bytes,
+                    "metadata": artifact.metadata,
+                    "value": self._values[artifact.id],
+                }
+                for artifact in (self._artifacts[identifier] for identifier in self.ids())
+            ]
+        }
+
+    @classmethod
+    def restore(cls, snapshot: dict[str, Any]) -> ContentStore:
+        """Rebuild a store from :meth:`snapshot`, re-deriving records from content."""
+
+        store = cls()
+        for entry in snapshot["artifacts"]:
+            store.put(entry["value"], Kind(entry["kind"]), entry.get("metadata") or {})
+        return store
 
     def __len__(self) -> int:
         return len(self._values)

@@ -53,21 +53,30 @@ key decisions.
 
 ## Results
 
-> Reproduce with `python -m training_provenance build` and `python -m training_provenance verify`.
-> The tracked pipeline standardizes a dataset, fits a ridge-regression model, and evaluates it.
+> Reproduce with `python -m training_provenance build`, `verify`, `reproduce`, `recover`, and
+> `tamper`. The tracked pipeline fingerprints its own source code, generates a dataset,
+> standardizes it, fits a ridge-regression model, and evaluates it, recording **six**
+> artifacts (dataset, config, **code fingerprint**, standardized dataset, model, metrics).
 
 | Property | Result |
 |---|---|
 | **pipeline reproduces bit for bit** | **yes (3 of 3 runs, full integrity)** |
+| **end-to-end reproduce (rebuild from scratch)** | **all 5 content hashes identical (dataset, config, code, model, metrics)** |
+| code provenance (source fingerprint bound to every run) | yes; drift from the recorded `code_version` is detected |
+| **crash recovery (resume an interrupted run)** | **resumes from the journal to a byte-identical result; verified at every crash point** |
+| damaged-journal rejection | a tampered journal fails verification and is refused, not resumed |
+| **tamper matrix (mutate each artifact field in turn)** | **10 of 10 single-field mutations across 5 lineage artifacts detected; clean lineage verifies** |
 | deterministic rebuild (same metrics identifier) | yes |
 | deduplication (re-storing content is a no-op) | yes |
-| tamper detection (corrupt an artifact) | caught, verification fails, run pinpointed |
-| model fit (held-in R squared) | 0.999 |
+| model fit (held-in R squared) | 0.9991 |
 
 The pipeline is **reproducible and deterministic**: rebuilding from the same inputs yields the
-same content identifier for every artifact, down to the evaluation metrics. Corrupting any
-tracked artifact is detected by the integrity check, and the run whose output no longer matches
-is pinpointed.
+same content identifier for every artifact, down to the evaluation metrics. The **training code
+is content-addressed** alongside the data, so the ledger records which code produced each
+artifact and verification catches source drift. An **interrupted run resumes** from its on-disk
+journal to a byte-for-byte identical result, and a **damaged journal is refused** rather than
+silently continued. Every single-field mutation of every artifact in a lineage is caught by the
+integrity and re-execution checks, and the run whose output no longer matches is pinpointed.
 
 ### Scale
 
@@ -88,22 +97,68 @@ is **not** benchmarked against compiled numerical libraries; wall-clock and thro
 measured on a shared development machine and will vary. Reproduce with
 `uv run python benchmarks/scale.py`.
 
+## End-to-end pipeline, reproduction, and crash recovery
+
+The tracked pipeline is a real (if small) training run: it fingerprints the transform source,
+generates a synthetic dataset, standardizes it, fits a ridge-regression model by closed form,
+and evaluates it, recording every artifact and every run. Three guarantees sit on top of it.
+
+**End-to-end reproduction.** `reproduce` runs the pipeline, then rebuilds it from scratch and
+compares every content hash:
+
+```text
+$ python -m training_provenance reproduce
+End-to-end reproduce (build, then rebuild from scratch):
+  end-to-end reproduced  (all artifact hashes identical)  metrics {'mse': 0.011297477, 'r2': 0.999074731}
+  code       identical
+  config     identical
+  dataset    identical
+  metrics    identical
+  model      identical
+  code       matches source
+```
+
+**Crash recovery.** `run_plan` executes the pipeline step by step and, after each step, writes a
+content-addressed **journal** (a snapshot of the store, the ledger, and the name bindings). If a
+run is interrupted, `resume_plan` loads the journal, **re-verifies the recorded prefix** (so a
+damaged journal is rejected, not resumed), and executes only the remaining steps. Because
+execution is deterministic and content-addressed, the resumed result is byte-for-byte identical:
+
+```text
+$ python -m training_provenance recover
+Interrupted: interrupted after 1 of 3 steps
+Journal on disk: interrupted: 1/3 steps recorded
+Resumed to completion: 3/3 steps
+Resumed metrics identical to uninterrupted run: True
+```
+
+The test suite proves this at **every** crash point (after 1, 2, and 3 steps the resumed run's
+identifiers match an uninterrupted run), and proves that a journal whose stored bytes were
+tampered with fails verification and is refused.
+
+**Tamper matrix.** `tests/test_depth.py` mutates **each field of each artifact** in a lineage in
+turn (10 single-field mutations across the 5 lineage artifacts) and asserts that verification
+catches every one -- either as a byte-level integrity failure or as a run whose re-execution
+diverges -- while the clean lineage verifies.
+
+```text
+$ python -m training_provenance tamper
+Corrupting standardized dataset artifact ...
+Reproducible after tamper: False
+Integrity failures detected: 1
+  standardize   MISMATCH
+```
+
 ## Demonstration
 
 ```text
 $ python -m training_provenance build
 Tracked pipeline:
-  artifacts 5  runs 3  reproduced (100% of runs)  integrity failures 0  metrics {'mse': ..., 'r2': 0.9991}
+  artifacts 6  runs 3  reproduced (100% of runs)  integrity failures 0  metrics {'mse': 0.011297477, 'r2': 0.999074731}
 Lineage of the evaluation metrics (roots first):
-  standardize   [4499360d5a24] -> [a1b2c3d4e5f6]  run 7f8e9d0c1b2a
-  train_ridge   [a1b2c3d4e5f6, 45ce830bc5d6] -> [...]  run ...
-  evaluate      [..., a1b2c3d4e5f6] -> [...]  run ...
-
-$ python -m training_provenance tamper
-Corrupting standardized dataset artifact ... 
-Reproducible after tamper: False
-Integrity failures detected: 1
-  standardize   MISMATCH
+  standardize  [4499360d5a24] -> [f0ec6453ebfc]  run 3bce72591310
+  train_ridge  [f0ec6453ebfc, 45ce830bc5d6] -> [fb4fd24f67e3]  run e559c861a411
+  evaluate     [fb4fd24f67e3, f0ec6453ebfc] -> [72de0f35fa9e]  run 2971d222ec7a
 ```
 
 ## Quickstart
@@ -115,6 +170,8 @@ make all                      # lint + type-check + test
 
 python -m training_provenance build      # run the tracked pipeline and print the lineage
 python -m training_provenance verify     # verify it reproduces bit for bit
+python -m training_provenance reproduce  # rebuild from scratch and compare every content hash
+python -m training_provenance recover    # interrupt a run, then resume it from its journal
 python -m training_provenance tamper     # corrupt an artifact and watch detection fire
 ```
 
@@ -153,11 +210,18 @@ path and tradeoffs are in [docs/SCALING.md](docs/SCALING.md) and a full walk-thr
 ## Components
 
 - **hashing** - canonical serialization and content identifiers.
-- **store** - a deduplicating, content-addressed artifact store with integrity checks.
+- **codehash** - content fingerprints of the transform source, bound to every run as its
+  `code_version` so the ledger records which code produced each artifact.
+- **store** - a deduplicating, content-addressed artifact store with integrity checks and
+  JSON snapshot/restore for durable persistence.
 - **transforms** - a registry of deterministic transforms and the demonstration pipeline steps.
-- **provenance** - runs and the content-addressed lineage DAG with ancestor traversal.
+- **provenance** - runs and the content-addressed lineage DAG with ancestor traversal and
+  snapshot/restore.
 - **reproduce** - execution, single-run verification, and whole-lineage verification.
 - **pipeline** - the tracked standardize, train, evaluate pipeline.
+- **endtoend** - the reproduce-and-verify driver that rebuilds from scratch and compares hashes.
+- **recovery** - durable, journaled execution: run a plan step by step, and resume an interrupted
+  run from its journal after verifying the recorded prefix.
 - **evaluation** - a summary report over a tracked pipeline.
 
 ## Design decisions
@@ -188,7 +252,8 @@ path and tradeoffs are in [docs/SCALING.md](docs/SCALING.md) and a full walk-thr
 
 - [ ] A pluggable blob backend for large artifacts with the same content addresses
 - [ ] Merkle proofs for partial lineage verification without the full store
-- [ ] Capture of environment and code hashes as first-class lineage inputs
+- [x] Content-addressed capture of the training **code** fingerprint, bound to every run
+- [ ] Capture of the full execution **environment** (interpreter, OS, package versions) as lineage inputs
 
 ## License
 

@@ -55,6 +55,39 @@ class Ledger:
             self._producer[output_id] = run.id
         return run
 
+    def snapshot(self) -> list[dict[str, Any]]:
+        """Serialize every recorded run to a JSON-compatible list for durable storage."""
+
+        return [
+            {
+                "id": run.id,
+                "operation": run.operation,
+                "input_ids": list(run.input_ids),
+                "output_ids": list(run.output_ids),
+                "params": run.params,
+                "code_version": run.code_version,
+            }
+            for run in self.runs.values()
+        ]
+
+    @classmethod
+    def restore(cls, snapshot: list[dict[str, Any]]) -> Ledger:
+        """Rebuild a ledger (and its producer index) from :meth:`snapshot`."""
+
+        ledger = cls()
+        for entry in snapshot:
+            ledger.record(
+                Run(
+                    id=entry["id"],
+                    operation=entry["operation"],
+                    input_ids=list(entry["input_ids"]),
+                    output_ids=list(entry["output_ids"]),
+                    params=entry["params"],
+                    code_version=entry["code_version"],
+                )
+            )
+        return ledger
+
     def producing_run(self, artifact_id: str) -> Run | None:
         producer = self._producer.get(artifact_id)
         return self.runs.get(producer) if producer is not None else None

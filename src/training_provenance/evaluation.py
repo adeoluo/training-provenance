@@ -44,6 +44,7 @@ def list_artifacts(built: BuiltPipeline) -> list[str]:
         identifiers.update(run.output_ids)
     identifiers.add(built.dataset_id)
     identifiers.add(built.config_id)
+    identifiers.add(built.code_id)
     return sorted(identifiers)
 
 
