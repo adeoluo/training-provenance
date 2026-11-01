@@ -69,6 +69,25 @@ same content identifier for every artifact, down to the evaluation metrics. Corr
 tracked artifact is detected by the integrity check, and the run whose output no longer matches
 is pinpointed.
 
+### Scale
+
+`benchmarks/scale.py` builds and verifies the tracked standardize -> train_ridge -> evaluate
+pipeline over progressively larger synthetic datasets and reports wall-clock time, throughput in
+rows ingested per second, peak traced memory (`tracemalloc`), the fraction of the lineage that
+verifies, and the held-in R squared. Content hashing and ingestion scale linearly with the
+dataset, every lineage verifies bit for bit, and the model fit holds.
+
+| dataset rows | seconds | rows/sec | peak MiB | lineage verified | held-in R² |
+|---:|---:|---:|---:|---:|---:|
+| 1,000 | 0.13 | 7,600 | 0.67 | 1.000 | 0.9991 |
+| 4,000 | 0.54 | 7,400 | 2.63 | 1.000 | 0.9991 |
+| 16,000 | 2.58 | 6,200 | 10.55 | 1.000 | 0.9992 |
+
+Honest caveat: the data is synthetic, this is a pure-Python from-scratch implementation, and it
+is **not** benchmarked against compiled numerical libraries; wall-clock and throughput were
+measured on a shared development machine and will vary. Reproduce with
+`uv run python benchmarks/scale.py`.
+
 ## Demonstration
 
 ```text
