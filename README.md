@@ -30,10 +30,16 @@ identifiers are SHA-256 digests of a canonical byte encoding.
   <img src="docs/architecture/architecture.svg" alt="Architecture diagram" width="860">
 </p>
 
+<sub>Legend: amber = entry points and external systems, indigo = core logic, green = data and state, blue = validation and control, grey = observability and outputs.</sub>
+
 Every artifact is stored under the hash of its canonical bytes, so identical content is stored
 once and any change yields a new identifier. Every run records its inputs, parameters, code
-version, and outputs, and is keyed by the hash of those inputs. See the [ADRs](docs/adr/) for the
-key decisions.
+version (the fingerprint of the transform source), and outputs, and is keyed by the hash of
+those inputs. The journaled plan runner snapshots the store and ledger after each step so an
+interrupted run resumes from a verified prefix. Verification re-executes the lineage and checks
+byte integrity, a full rebuild compares every content hash, and the HTTP service answers report,
+verify, and lineage queries with per-route metrics. See the [ADRs](docs/adr/) for the key
+decisions.
 
 ### The ideas
 

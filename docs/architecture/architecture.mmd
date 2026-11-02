@@ -1,12 +1,68 @@
 flowchart LR
-    Source[Transform source] --> Code[Code fingerprint]
-    Data[(Dataset and config)] --> Store[(Content store)]
-    Code --> Exec[Execute run]
-    Store --> Exec
-    Exec --> Store
-    Exec --> Ledger[(Lineage DAG)]
-    Exec --> Journal[(Recovery journal)]
-    Ledger --> Verify[Re-execute and verify]
-    Store --> Verify
-    Client([Client]) --> Router[HTTP router]
-    Router --> Verify
+    classDef edge     fill:#F59E0B,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+    classDef core     fill:#6366F1,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef data     fill:#10B981,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef control  fill:#0EA5E9,stroke:#1E293B,color:#ffffff,stroke-width:1px;
+    classDef obs      fill:#CBD5E1,stroke:#1E293B,color:#1E293B,stroke-width:1px;
+
+    CLI(["CLI<br/>build | verify | tamper | reproduce | recover | serve"]):::edge
+    Client(["HTTP client"]):::edge
+
+    subgraph Inputs["Pipeline inputs (deterministic)"]
+        direction TB
+        Dataset[("Synthetic dataset + ridge config<br/>root artifacts")]:::data
+        Transforms["Transform registry<br/>standardize, train_ridge, evaluate"]:::core
+        CodeHash["Code fingerprint<br/>hash of transform source"]:::core
+    end
+
+    subgraph Exec["Execution (content-addressed)"]
+        direction TB
+        Plan["Journaled plan runner<br/>one step at a time, resume"]:::control
+        Execute["Execute run<br/>id = hash(op, inputs, params, code)"]:::core
+    end
+
+    subgraph State["Provenance state"]
+        direction TB
+        Store[("Content store<br/>canonical JSON hash, dedup")]:::data
+        Ledger[("Ledger<br/>lineage DAG of runs")]:::data
+        Journal[("Journal file<br/>store + ledger snapshot")]:::data
+    end
+
+    subgraph Edge["Interfaces (stdlib HTTP, built at startup)"]
+        direction TB
+        Router["Router<br/>/health | /ready | /report | /verify | /lineage"]:::core
+        Validate["Validation<br/>non-empty, known artifact id"]:::control
+    end
+
+    subgraph Eval["Verification, reports, and observability"]
+        direction TB
+        Lineage["Artifact lineage<br/>ancestor runs back to roots"]:::obs
+        Verify["Lineage verification<br/>re-execute runs, byte integrity"]:::obs
+        Reproduce["Rebuild and compare<br/>every content hash + code drift"]:::obs
+        Report["Provenance report<br/>artifacts, runs, model metrics"]:::obs
+        Metrics["Route metrics<br/>Prometheus GET /metrics"]:::obs
+    end
+
+    CLI -->|build, verify, tamper| Execute
+    CLI -->|recover| Plan
+    CLI -->|reproduce| Reproduce
+    Dataset -->|input artifacts| Execute
+    Transforms -->|deterministic transform| Execute
+    Transforms -->|source text| CodeHash
+    CodeHash -->|code_version| Execute
+    Plan -->|next step| Execute
+    Execute -->|outputs| Store
+    Execute -->|run record| Ledger
+    Plan -->|snapshot after each step| Journal
+    Journal -.->|verified prefix on resume| Plan
+    Client -->|JSON request| Router
+    Router -->|POST /lineage| Validate
+    Validate -->|artifact id| Lineage
+    Ledger -.->|ancestor runs| Lineage
+    Router -->|GET /verify| Verify
+    Ledger -.->|recorded runs| Verify
+    Store -.->|stored bytes| Verify
+    Store -.->|content hashes| Reproduce
+    Router -->|GET /report| Report
+    Store -.->|artifacts, metrics| Report
+    Router -.-> Metrics
