@@ -1,0 +1,41 @@
+# Training Provenance
+
+> Content-addressed provenance tracking for machine learning pipelines: a deduplicating artifact store, a content-addressed lineage DAG, and bit-for-bit reproducibility and integrity verification.
+
+Languages: Python. License: MIT. Source: https://github.com/adeoluo/training-provenance
+
+## Docs
+
+- [README](https://github.com/adeoluo/training-provenance/blob/main/README.md): motivation, architecture, results, quickstart, usage, design decisions, testing, responsible ai, limitations, roadmap
+- [AGENTS.md](https://github.com/adeoluo/training-provenance/blob/main/AGENTS.md): layout, commands and conventions for changing the code
+- [Architecture diagram](https://github.com/adeoluo/training-provenance/blob/main/docs/architecture/architecture.mmd): Mermaid source of the component diagram
+- [Case Study - Auditing a model back to its inputs](https://github.com/adeoluo/training-provenance/blob/main/docs/CASE_STUDY.md)
+- [Data Card - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/DATA_CARD.md)
+- [Definition of Done](https://github.com/adeoluo/training-provenance/blob/main/docs/DEFINITION_OF_DONE.md)
+- [Evaluation Report - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/EVALUATION_REPORT.md)
+- [Model / System Card - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/MODEL_CARD.md)
+- [Operations Guide - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/OPERATIONS.md)
+- [Scaling - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/SCALING.md)
+- [Threat Model - Training Provenance](https://github.com/adeoluo/training-provenance/blob/main/docs/THREAT_MODEL.md)
+- [ADR-0001: Record architecture decisions](https://github.com/adeoluo/training-provenance/blob/main/docs/adr/0001-record-architecture-decisions.md)
+- [ADR-0002: Content addressing over assigned identifiers](https://github.com/adeoluo/training-provenance/blob/main/docs/adr/0002-content-addressing.md)
+- [ADR-0003: Reproducibility verification by re-execution](https://github.com/adeoluo/training-provenance/blob/main/docs/adr/0003-verification-by-reexecution.md)
+- [ADR-NNNN: <short title>](https://github.com/adeoluo/training-provenance/blob/main/docs/adr/template.md)
+- [Changelog](https://github.com/adeoluo/training-provenance/blob/main/CHANGELOG.md): release history
+
+## Source
+
+- [src/training_provenance/__init__.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/__init__.py): Training Provenance - content-addressed lineage and reproducibility tracking.
+- [src/training_provenance/cli.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/cli.py): Command line interface for training provenance.
+- [src/training_provenance/codehash.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/codehash.py): Content fingerprints of the training code itself.
+- [src/training_provenance/endtoend.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/endtoend.py): An end-to-end, reproduce-and-verify driver for the tracked pipeline.
+- [src/training_provenance/evaluation.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/evaluation.py): Summary reporting over a tracked pipeline.
+- [src/training_provenance/hashing.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/hashing.py): Deterministic content addressing.
+- [src/training_provenance/observability.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/observability.py): In-process request metrics for the HTTP service (Prometheus text exposition).
+- [src/training_provenance/pipeline.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/pipeline.py): A tracked end-to-end machine learning pipeline for demonstration.
+- [src/training_provenance/provenance.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/provenance.py): The provenance ledger: runs and the lineage DAG.
+- [src/training_provenance/recovery.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/recovery.py): Durable, journaled execution with crash recovery.
+- [src/training_provenance/reproduce.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/reproduce.py): Execution and reproducibility verification.
+- [src/training_provenance/service.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/service.py): A standard-library HTTP service exposing the provenance ledger.
+- [src/training_provenance/store.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/store.py): A content-addressed artifact store.
+- [src/training_provenance/transforms.py](https://github.com/adeoluo/training-provenance/blob/main/src/training_provenance/transforms.py): A registry of deterministic transforms and a small tracked ML pipeline.
