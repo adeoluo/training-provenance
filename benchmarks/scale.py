@@ -79,7 +79,7 @@ def measure(rows: int) -> ScalePoint:
 
 
 def main() -> None:
-    print("Synthetic regression data; a pure-Python, from-scratch provenance system.")
+    print("Synthetic regression data; a from-scratch Python provenance system.")
     print("Wall-clock is not competitive with compiled numerical libraries.")
     print("Build and verification run end to end; 'verified' is the reproduced fraction.\n")
 

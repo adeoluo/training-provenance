@@ -1,8 +1,7 @@
 # Operations Guide - Training Provenance
 
 The service is a single stateless process that builds the tracked pipeline once at startup and
-then answers read-only provenance queries. It has zero runtime dependencies and binds only the
-Python standard library HTTP server.
+then answers read-only provenance queries. It runs on the Python standard library HTTP server.
 
 ## Service contract
 

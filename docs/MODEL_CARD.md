@@ -3,7 +3,7 @@
 ## Overview
 - **What it is:** a from-scratch, content-addressed provenance system for machine learning
   pipelines, with a deduplicating store, a lineage DAG, and reproducibility and integrity
-  verification. Zero runtime dependencies.
+  verification.
 - **Base model(s):** not applicable; the tracked demonstration model is a ridge regression fit by
   closed form.
 - **Version and date:** 1.0, 2026-01-01.

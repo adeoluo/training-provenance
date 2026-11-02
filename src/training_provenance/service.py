@@ -1,4 +1,4 @@
-"""A dependency-free HTTP service exposing the provenance ledger.
+"""A standard-library HTTP service exposing the provenance ledger.
 
 The service builds the tracked pipeline once at startup and then answers read-only
 provenance queries: the summary report, the lineage of an artifact, an artifact

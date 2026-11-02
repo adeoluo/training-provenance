@@ -2,7 +2,7 @@
 
 The code that produced an artifact is as much a part of its provenance as the data
 and the configuration: the same dataset and configuration run through different code
-produce a different model. Because transforms are pure Python functions registered
+produce a different model. Because transforms are Python-defined functions registered
 by name, the source text of each one can be read with :func:`inspect.getsource` and
 hashed into a content identifier, exactly like any other artifact.
 
