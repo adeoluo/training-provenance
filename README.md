@@ -230,6 +230,28 @@ latency metrics in Prometheus text format). A production-style stress benchmark
 path and tradeoffs are in [docs/SCALING.md](docs/SCALING.md) and a full walk-through is in the
 [case study](docs/CASE_STUDY.md).
 
+### Demos
+
+Recorded from real runs with [vhs](https://github.com/charmbracelet/vhs); each tape is in `docs/demo/`.
+
+Building a pipeline's provenance record, then verifying it.
+
+<p align="center">
+  <img src="docs/demo/verify.gif" alt="Building a pipeline's provenance record, then verifying it" width="860">
+</p>
+
+Tampering with an artifact is detected; recovery restores it.
+
+<p align="center">
+  <img src="docs/demo/tamper.gif" alt="Tampering with an artifact is detected; recovery restores it" width="860">
+</p>
+
+Reproducing a run and comparing content hashes.
+
+<p align="center">
+  <img src="docs/demo/reproduce.gif" alt="Reproducing a run and comparing content hashes" width="860">
+</p>
+
 ## Design decisions
 
 - **Content addressing over counters.** Identifiers are hashes of content, which gives
