@@ -252,6 +252,12 @@ Reproducing a run and comparing content hashes.
   <img src="docs/demo/reproduce.gif" alt="Reproducing a run and comparing content hashes" width="860">
 </p>
 
+The HTTP service verifying reproducibility and reporting the pipeline.
+
+<p align="center">
+  <img src="docs/demo/http.gif" alt="The HTTP service verifying reproducibility and reporting the pipeline" width="860">
+</p>
+
 ## Design decisions
 
 - **Content addressing over counters.** Identifiers are hashes of content, which gives
