@@ -5,64 +5,44 @@ flowchart LR
     classDef control  fill:#0EA5E9,stroke:#1E293B,color:#ffffff,stroke-width:1px;
     classDef obs      fill:#CBD5E1,stroke:#1E293B,color:#1E293B,stroke-width:1px;
 
-    CLI(["CLI<br/>build | verify | tamper | reproduce | recover | serve"]):::edge
-    Client(["HTTP client"]):::edge
-
-    subgraph Inputs["Pipeline inputs (deterministic)"]
+    subgraph Interfaces["Interfaces"]
         direction TB
-        Dataset[("Synthetic dataset + ridge config<br/>root artifacts")]:::data
-        Transforms["Transform registry<br/>standardize, train_ridge, evaluate"]:::core
-        CodeHash["Code fingerprint<br/>hash of transform source"]:::core
+        CLI["CLI<br/>build, verify, recover"]:::edge
+        Client(["HTTP client"]):::edge
+        Router["HTTP router<br/>/report /verify /lineage"]:::core
+        Validate["Validation<br/>known artifact id"]:::control
+        CLI ~~~ Client --> Router --> Validate
     end
 
-    subgraph Exec["Execution (content-addressed)"]
+    subgraph Exec["Tracked execution"]
         direction TB
-        Plan["Journaled plan runner<br/>one step at a time, resume"]:::control
-        Execute["Execute run<br/>id = hash(op, inputs, params, code)"]:::core
+        Dataset[("Dataset + config<br/>root artifacts")]:::data
+        Transforms["Transform registry<br/>standardize, ridge, eval"]:::core
+        CodeHash["Code fingerprint<br/>hash of source"]:::core
+        Plan["Journaled runner<br/>resume after crash"]:::control
+        Execute["Execute run<br/>content-addressed id"]:::core
+        Dataset ~~~ Transforms --> CodeHash --> Execute
+        Plan --> Execute
     end
 
     subgraph State["Provenance state"]
         direction TB
-        Store[("Content store<br/>canonical JSON hash, dedup")]:::data
+        Store[("Content store<br/>dedup by hash")]:::data
         Ledger[("Ledger<br/>lineage DAG of runs")]:::data
-        Journal[("Journal file<br/>store + ledger snapshot")]:::data
+        Journal[("Journal<br/>per-step snapshots")]:::data
+        Store ~~~ Ledger ~~~ Journal
     end
 
-    subgraph Edge["Interfaces (stdlib HTTP, built at startup)"]
+    subgraph Obs["Verification and reports"]
         direction TB
-        Router["Router<br/>/health | /ready | /report | /verify | /lineage"]:::core
-        Validate["Validation<br/>non-empty, known artifact id"]:::control
+        Lineage["Artifact lineage<br/>ancestor runs"]:::obs
+        Verify["Lineage verification<br/>re-execute, integrity"]:::obs
+        Reproduce["Rebuild + compare<br/>every content hash"]:::obs
+        Report["Provenance report<br/>artifacts, metrics"]:::obs
+        Metrics["Route metrics<br/>Prometheus text"]:::obs
+        Lineage ~~~ Verify ~~~ Reproduce ~~~ Report ~~~ Metrics
     end
 
-    subgraph Eval["Verification, reports, and observability"]
-        direction TB
-        Lineage["Artifact lineage<br/>ancestor runs back to roots"]:::obs
-        Verify["Lineage verification<br/>re-execute runs, byte integrity"]:::obs
-        Reproduce["Rebuild and compare<br/>every content hash + code drift"]:::obs
-        Report["Provenance report<br/>artifacts, runs, model metrics"]:::obs
-        Metrics["Route metrics<br/>Prometheus GET /metrics"]:::obs
-    end
-
-    CLI -->|build, verify, tamper| Execute
-    CLI -->|recover| Plan
-    CLI -->|reproduce| Reproduce
-    Dataset -->|input artifacts| Execute
-    Transforms -->|deterministic transform| Execute
-    Transforms -->|source text| CodeHash
-    CodeHash -->|code_version| Execute
-    Plan -->|next step| Execute
-    Execute -->|outputs| Store
-    Execute -->|run record| Ledger
-    Plan -->|snapshot after each step| Journal
-    Journal -.->|verified prefix on resume| Plan
-    Client -->|JSON request| Router
-    Router -->|POST /lineage| Validate
-    Validate -->|artifact id| Lineage
-    Ledger -.->|ancestor runs| Lineage
-    Router -->|GET /verify| Verify
-    Ledger -.->|recorded runs| Verify
-    Store -.->|stored bytes| Verify
-    Store -.->|content hashes| Reproduce
-    Router -->|GET /report| Report
-    Store -.->|artifacts, metrics| Report
-    Router -.-> Metrics
+    Interfaces -->|build, recover| Exec
+    Exec -->|artifacts, runs| State
+    Exec -->|re-execute, rebuild| Obs
