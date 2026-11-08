@@ -290,6 +290,11 @@ CI (`.github/workflows/ci.yml`) runs format, lint, type check, and the coverage-
 - **Model card:** [docs/MODEL_CARD.md](docs/MODEL_CARD.md)
 - **Data card:** [docs/DATA_CARD.md](docs/DATA_CARD.md)
 - **Threat model:** [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md)
+- **Standards:** the [threat model](docs/THREAT_MODEL.md#standards-mapping) maps tampering and
+  forgery to LLM04:2026 Supply Chain and LLM05:2026 Data and Model Poisoning in the OWASP Top
+  10 for LLM Applications 2026, and to MITRE ATLAS v2026.10 (AML.T0010.002 Supply Chain
+  Compromise: Data Repository, AML.T0059 Erode Dataset Integrity, and the mitigation
+  AML.M0025 Maintain AI Dataset Provenance).
 
 ## Limitations
 
