@@ -1,6 +1,6 @@
 [project]
 name = "training-provenance"
-version = "0.1.0"
+version = "0.1.1"
 description = "Content-addressed provenance tracking for machine learning pipelines with a lineage DAG and reproducibility verification."
 readme = "README.md"
 requires-python = ">=3.12"

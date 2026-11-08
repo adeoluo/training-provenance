@@ -30,7 +30,7 @@ from training_provenance.reproduce import (
 )
 from training_provenance.store import Artifact, ContentStore, Kind
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "Artifact",
