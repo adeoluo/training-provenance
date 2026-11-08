@@ -1,10 +1,22 @@
 cff-version: 1.2.0
-message: "If you use this work, please cite it."
+message: "If you use this software, please cite it as below."
+type: software
 title: "Training Provenance"
+abstract: "Content-addressed provenance tracking for machine learning pipelines: a deduplicating artifact store, a content-addressed lineage DAG, and bit-for-bit reproducibility and integrity verification."
 authors:
   - family-names: "Ogunnoiki"
     given-names: "Adeolu"
-version: 0.1.0
-date-released: 2026-01-01
+version: "0.1.0"
+date-released: "2026-11-02"
 license: MIT
+repository-code: "https://github.com/adeoluo/training-provenance"
 url: "https://github.com/adeoluo/training-provenance"
+keywords:
+  - "content-addressable"
+  - "data-integrity"
+  - "from-scratch"
+  - "lineage"
+  - "mlops"
+  - "provenance"
+  - "python"
+  - "reproducibility"
